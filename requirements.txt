@@ -1,5 +1,6 @@
 customtkinter==5.2.2
 tksheet==7.5.19
+lxml==5.4.0
 pandas>=2.0,<3
 openpyxl>=3.1,<4
 numpy>=1.24,<3

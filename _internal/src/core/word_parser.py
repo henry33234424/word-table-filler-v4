@@ -5,7 +5,7 @@ Word XML 解析工具
 - 支持合并单元格、SDT 等复杂结构
 """
 
-import xml.etree.ElementTree as ET
+from lxml import etree as ET
 import os
 import re
 import shutil

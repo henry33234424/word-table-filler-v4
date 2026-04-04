@@ -5,7 +5,7 @@ Word 表格填充逻辑
 - 支持合并单元格处理
 """
 
-import xml.etree.ElementTree as ET
+from lxml import etree as ET
 import pandas as pd
 import numpy as np
 import os
