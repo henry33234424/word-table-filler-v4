@@ -27,6 +27,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Validate dependency graph
+        run: |
+          python -m pip check
+
+      - name: Smoke test app imports
+        run: |
+          python -c "import sys; sys.path.insert(0, '_internal'); import src.app, src.ui.step1_files, src.ui.step2_rules, src.ui.step3_mapping, src.ui.step4_execute, src.core.word_parser, src.core.mapping, src.core.filler, src.core.word_exporter"
+
       - name: Build with PyInstaller
         run: |
           python -m PyInstaller ^
