@@ -7,6 +7,7 @@ Word XML 解析工具
 
 import xml.etree.ElementTree as ET
 import os
+import re
 import shutil
 import tempfile
 from zipfile import ZipFile
@@ -21,11 +22,67 @@ for prefix, uri in NAMESPACES.items():
     ET.register_namespace(prefix, uri)
 
 
+XML_DECLARATION_RE = re.compile(r'^\ufeff?\s*(<\?xml[^>]*\?>)', re.S)
+ROOT_START_TAG_RE = re.compile(r'^\ufeff?\s*(?:<\?xml[^>]*\?>\s*)?(<[^!?/][^>]*>)', re.S)
+ROOT_END_TAG_RE = re.compile(r'(</[^>]+>\s*)$', re.S)
+
+
 def register_namespaces_from_file(xml_path):
     """从 XML 文件中扫描所有命名空间声明并注册，避免输出 ns0, ns1 等前缀"""
     for _, (prefix, uri) in ET.iterparse(xml_path, events=['start-ns']):
-        if prefix:
-            ET.register_namespace(prefix, uri)
+        try:
+            ET.register_namespace(prefix or '', uri)
+        except ValueError:
+            # 跳过 xml 等 ElementTree 内部保留前缀
+            continue
+
+
+def capture_xml_wrapper(xml_path):
+    """
+    读取原始 XML 头、根节点起始标签、根节点结束标签。
+
+    用于在保存时把模板 document.xml 的根包装层原样带回去，
+    避免 ElementTree 重序列化后调整 xmlns 声明、顺序或丢失未使用前缀。
+    """
+    with open(xml_path, 'r', encoding='utf-8') as f:
+        xml_text = f.read()
+
+    xml_declaration_match = XML_DECLARATION_RE.search(xml_text)
+    root_start_tag_match = ROOT_START_TAG_RE.search(xml_text)
+    root_end_tag_match = ROOT_END_TAG_RE.search(xml_text)
+
+    xml_declaration = (
+        xml_declaration_match.group(1)
+        if xml_declaration_match else
+        '<?xml version="1.0" encoding="UTF-8"?>'
+    )
+    root_start_tag = root_start_tag_match.group(1) if root_start_tag_match else None
+    root_end_tag = root_end_tag_match.group(1).strip() if root_end_tag_match else None
+
+    return xml_declaration, root_start_tag, root_end_tag
+
+
+def write_xml_preserving_wrapper(root, xml_path, xml_declaration=None, root_start_tag=None, root_end_tag=None):
+    """
+    写回 XML，并保留模板原始根节点包装标签。
+
+    说明：
+    - ElementTree 负责生成修改后的 XML 主体；
+    - 根节点起始/结束标签直接替换为模板原文，以保留 xmlns 声明、顺序和未使用前缀。
+    """
+    xml_body = ET.tostring(root, encoding='unicode')
+
+    if root_start_tag:
+        xml_body = re.sub(r'^<[^>]+>', root_start_tag, xml_body, count=1)
+    if root_end_tag:
+        xml_body = re.sub(r'</[^>]+>\s*$', root_end_tag, xml_body, count=1)
+
+    xml_declaration = (xml_declaration or '<?xml version="1.0" encoding="UTF-8"?>')
+
+    with open(xml_path, 'w', encoding='utf-8', newline='') as f:
+        f.write(xml_declaration)
+        f.write('\n')
+        f.write(xml_body)
 
 
 def extract_docx(docx_path, extract_dir=None):

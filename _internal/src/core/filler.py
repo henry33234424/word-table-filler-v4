@@ -15,6 +15,7 @@ import tempfile
 
 from .word_parser import (
     NAMESPACES, extract_docx, pack_docx, register_namespaces_from_file,
+    capture_xml_wrapper, write_xml_preserving_wrapper,
     flatten_body_elements, get_paragraph_style,
     get_cell_text, is_merged_cell, detect_header_rows,
     get_row_first_cell_text, parse_styles, DEFAULT_SKIP_KEYWORDS
@@ -328,6 +329,9 @@ class DocumentFiller:
         self.root = None
         self.tables_dict = {}
         self.style_levels = {}  # 样式到层级的映射
+        self.document_xml_declaration = None
+        self.document_root_start_tag = None
+        self.document_root_end_tag = None
 
     def prepare(self):
         """准备工作目录"""
@@ -344,6 +348,11 @@ class DocumentFiller:
 
         # 解析 XML（先注册模板中的所有命名空间）
         xml_path = os.path.join(self.work_dir, 'word', 'document.xml')
+        (
+            self.document_xml_declaration,
+            self.document_root_start_tag,
+            self.document_root_end_tag,
+        ) = capture_xml_wrapper(xml_path)
         register_namespaces_from_file(xml_path)
         tree = ET.parse(xml_path)
         self.root = tree.getroot()
@@ -513,8 +522,13 @@ class DocumentFiller:
 
         # 保存 XML
         xml_path = os.path.join(self.work_dir, 'word', 'document.xml')
-        tree = ET.ElementTree(self.root)
-        tree.write(xml_path, encoding='UTF-8', xml_declaration=True)
+        write_xml_preserving_wrapper(
+            self.root,
+            xml_path,
+            xml_declaration=self.document_xml_declaration,
+            root_start_tag=self.document_root_start_tag,
+            root_end_tag=self.document_root_end_tag,
+        )
 
         # 打包
         pack_docx(self.work_dir, self.output_path)

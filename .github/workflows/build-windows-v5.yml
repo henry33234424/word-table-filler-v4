@@ -1,0 +1,62 @@
+name: Build Windows v5
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - v5-namespace-wrapper
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build with PyInstaller
+        run: |
+          python -m PyInstaller ^
+            --name "Word表格模板填报工具" ^
+            --windowed ^
+            --noconfirm ^
+            --clean ^
+            --paths "_internal" ^
+            --hidden-import customtkinter ^
+            --hidden-import pandas ^
+            --hidden-import openpyxl ^
+            --hidden-import numpy ^
+            --collect-all customtkinter ^
+            --collect-all openpyxl ^
+            --add-data "_internal/src;src" ^
+            _internal/src/main.py
+        shell: cmd
+
+      - name: Package artifact
+        run: |
+          $packageRoot = "package"
+          $artifactName = "Excel-to-Word表格模板填报工具-Windows-v5"
+          New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
+          Move-Item -Path "dist/Word表格模板填报工具" -Destination "$packageRoot/$artifactName"
+          Copy-Item -Path "使用说明.docx" -Destination "$packageRoot/$artifactName/" -Force
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Excel-to-Word表格模板填报工具-Windows-v5
+          path: package/Excel-to-Word表格模板填报工具-Windows-v5
+          retention-days: 30
