@@ -36,10 +36,12 @@ jobs:
             --clean ^
             --paths "_internal" ^
             --hidden-import customtkinter ^
+            --hidden-import tksheet ^
             --hidden-import pandas ^
             --hidden-import openpyxl ^
             --hidden-import numpy ^
             --collect-all customtkinter ^
+            --collect-all tksheet ^
             --collect-all openpyxl ^
             --add-data "_internal/src;src" ^
             _internal/src/main.py
