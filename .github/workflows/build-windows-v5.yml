@@ -33,11 +33,53 @@ jobs:
 
       - name: Smoke test app imports
         run: |
-          python -c "import sys; sys.path.insert(0, '_internal'); import src.app, src.ui.step1_files, src.ui.step2_rules, src.ui.step3_mapping, src.ui.step4_execute, src.core.word_parser, src.core.mapping, src.core.filler, src.core.word_exporter"
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, '_internal')
+          import src.app
+          import src.ui.step1_files
+          import src.ui.step2_rules
+          import src.ui.step3_mapping
+          import src.ui.step4_execute
+          import src.core.word_parser
+          import src.core.mapping
+          import src.core.filler
+          import src.core.word_exporter
+          PY
+        shell: bash
 
       - name: Smoke test XML namespace roundtrip
         run: |
-          python -c "import sys, tempfile; from pathlib import Path; sys.path.insert(0, '_internal'); from lxml import etree as ET; from src.core.word_parser import capture_xml_wrapper, register_namespaces_from_file, write_xml_preserving_wrapper; xml = '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><x:foo xmlns:x=\"urn:test\"/></w:body></w:document>'; tmp = Path(tempfile.mkdtemp()); src = tmp / 'in.xml'; out = tmp / 'out.xml'; src.write_text(xml, encoding='utf-8'); xml_decl, root_start, root_end = capture_xml_wrapper(src); register_namespaces_from_file(src); root = ET.parse(str(src)).getroot(); write_xml_preserving_wrapper(root, out, xml_decl, root_start, root_end); ET.parse(str(out)); assert 'xmlns:x=\"urn:test\"' in out.read_text(encoding='utf-8')"
+          python - <<'PY'
+          import sys
+          import tempfile
+          from pathlib import Path
+          from lxml import etree as ET
+
+          sys.path.insert(0, '_internal')
+          from src.core.word_parser import (
+              capture_xml_wrapper,
+              register_namespaces_from_file,
+              write_xml_preserving_wrapper,
+          )
+
+          xml = """<?xml version="1.0" encoding="UTF-8"?>
+          <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><x:foo xmlns:x="urn:test"/></w:body></w:document>"""
+
+          tmp = Path(tempfile.mkdtemp())
+          src = tmp / "in.xml"
+          out = tmp / "out.xml"
+          src.write_text(xml, encoding="utf-8")
+
+          xml_decl, root_start, root_end = capture_xml_wrapper(src)
+          register_namespaces_from_file(src)
+          root = ET.parse(str(src)).getroot()
+          write_xml_preserving_wrapper(root, out, xml_decl, root_start, root_end)
+          ET.parse(str(out))
+
+          assert 'xmlns:x="urn:test"' in out.read_text(encoding="utf-8")
+          PY
+        shell: bash
 
       - name: Build with PyInstaller
         run: |
